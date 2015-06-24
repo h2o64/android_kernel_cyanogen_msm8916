@@ -805,7 +805,7 @@ area_found:
 
 	/* return address relative to base address */
 	ptr = __addr_to_pcpu_ptr(chunk->base_addr + off);
-	kmemleak_alloc_percpu(ptr, size);
+	kmemleak_alloc_percpu(ptr, size, gfp);
 	return ptr;
 
 fail_unlock:
