@@ -7423,7 +7423,7 @@ static void bma2x2_double_tap_disable(struct bma2x2_data *data)
 	if (data->g_sensor_dev_doubletap) {
 		sysfs_remove_group(&data->g_sensor_dev_doubletap->kobj,
 			&bma2x2_double_tap_attribute_group);
-		device_destroy(data->g_sensor_dev_doubletap);
+		device_destroy(data->g_sensor_dev_doubletap, 0);
 		class_destroy(data->g_sensor_class_doubletap);
 	}
 	return;
@@ -7441,7 +7441,7 @@ static void bma2x2_sig_motion_disable(struct bma2x2_data *data)
 	if (data->g_sensor_dev) {
 		sysfs_remove_group(&data->g_sensor_dev->kobj,
 			&bma2x2_sig_motion_attribute_group);
-		device_destroy(data->g_sensor_dev);
+		device_destroy(data->g_sensor_dev, 0);
 		class_destroy(data->g_sensor_class);
 	}
 	return;
@@ -7979,7 +7979,7 @@ remove_dtap_sysfs_exit:
 sysfs_remove_group(&data->g_sensor_dev_doubletap->kobj,
 			&bma2x2_double_tap_attribute_group);
 destroy_dtap_dev_exit:
-	device_destroy(data->g_sensor_dev_doubletap);
+	device_destroy(data->g_sensor_dev_doubletap, 0);
 destroy_dtap_class_exit:
 	class_destroy(data->g_sensor_class_doubletap);
 remove_sig_motion_sysfs_exit:
@@ -7989,7 +7989,7 @@ remove_sig_motion_sysfs_exit:
 sysfs_remove_group(&data->g_sensor_dev->kobj,
 		&bma2x2_sig_motion_attribute_group);
 free_g_sensor_dev_exit:
-	device_destroy(data->g_sensor_dev);
+	device_destroy(data->g_sensor_dev, 0);
 destroy_g_sensor_class_exit:
 	class_destroy(data->g_sensor_class);
 #endif

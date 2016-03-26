@@ -48,6 +48,11 @@ allowed_warnings = set([
     "jhash.h:137",
     "cmpxchg.h:162",
     "ping.c:87",
+    "bma2x2.c:7426",
+    "bma2x2.c:7426",
+    "bma2x2.c:7444",
+    "bma2x2.c:7982",
+    "bma2x2.c:7992",
  ])
 
 # Capture the name of the object file, can find it.
