@@ -57,22 +57,12 @@ EXPORT_SYMBOL(core_ctl_find_cpu_device);
 
 int __ref core_ctl_online_core(unsigned int cpu)
 {
-	int ret;
-
-	lock_device_hotplug();
-	ret = device_online(get_cpu_device(cpu));
-	unlock_device_hotplug();
-	return ret;
+	return cpu_up(cpu);
 }
 EXPORT_SYMBOL(core_ctl_online_core);
 
 int __ref core_ctl_offline_core(unsigned int cpu)
 {
-	int ret;
-
-	lock_device_hotplug();
-	ret = device_offline(get_cpu_device(cpu));
-	unlock_device_hotplug();
-	return ret;
+	return cpu_down(cpu);
 }
 EXPORT_SYMBOL(core_ctl_offline_core);
