@@ -391,9 +391,9 @@ static void AKECS_SetYPR(
 		input_report_abs(akm->input, ABS_VOLUME, rbuf[15]);
 	}
 
-	get_monotonic_boottime(&ts);
-	input_event(akm->input, EV_SYN, SYN_TIME_SEC, ts.tv_sec);
-	input_event(akm->input, EV_SYN, SYN_TIME_NSEC, ts.tv_nsec);
+	ktime_t timestamp = ktime_get_boottime();
+	input_event(akm->input, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
+	input_event(akm->input, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(akm->input);
 }
 
@@ -2208,12 +2208,12 @@ static int akm_report_data(struct akm_compass_data *akm)
 		break;
 	}
 
-	get_monotonic_boottime(&ts);
+	ktime_t timestamp = ktime_get_boottime();
 	input_report_abs(akm->input, ABS_X, mag_x);
 	input_report_abs(akm->input, ABS_Y, mag_y);
 	input_report_abs(akm->input, ABS_Z, mag_z);
-	input_event(akm->input, EV_SYN, SYN_TIME_SEC, ts.tv_sec);
-	input_event(akm->input, EV_SYN, SYN_TIME_NSEC, ts.tv_nsec);
+	input_event(akm->input, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
+	input_event(akm->input, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(akm->input);
 
 	return 0;
