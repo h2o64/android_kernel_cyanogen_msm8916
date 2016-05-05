@@ -164,7 +164,7 @@ enum {
 enum {
 	DEFUALT_CHARGING_MODE = 0x00, /* NORMAL_CHARGING_MODE */
 	USB_CHARGING_MODE = 0x01,         /* charging current max = 500mA */
-	NORMAL_CHARGING_MODE = 0x02,  /* charging current max = 1000mA */
+	NORMAL_CHARGING_MODE = 0x02,  /* charging current max = 1400mA */
 	FAST_CHARGING_MODE = 0x0F,        /* charging current max = 1500mA */
 	DIS_CHARGING_MODE = 0xFF,          /* disable charge */
 	UNKOWN_CHARGING_MODE,            /* NORMAL_CHARGING_MODE */
