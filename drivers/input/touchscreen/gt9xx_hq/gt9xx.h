@@ -72,13 +72,7 @@
 #define PROP_NAME_SIZE		24
 #define GOODIX_MAX_CFG_GROUP	10 //modify by pangle at 2014.10.16
 #define GTP_FW_NAME_MAXSIZE	50
-#if defined(CONFIG_QL602_YOUGOU_D_512)
 #define GTP_GESTURE_WAKEUP    1
-#elif defined(CONFIG_QL1008_YUSUN_BL889)
-#define GTP_GESTURE_WAKEUP    1
-#else
-#define GTP_GESTURE_WAKEUP    0
-#endif
 
 #define GTP_DEBUG_ON          0
 #define GTP_DEBUG_ARRAY_ON    0
