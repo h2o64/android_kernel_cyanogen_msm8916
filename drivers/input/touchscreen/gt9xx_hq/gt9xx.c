@@ -152,7 +152,7 @@ static const struct file_operations gtp_gesture_proc_fops = {
 	.write = gt9xx_gesture_write_proc,
 };
 static DEFINE_MUTEX(g_device_mutex);
-bool gesture_enable;
+bool gesture_enable = true;
 bool gesture_enable_dtsi;
 #endif
 
