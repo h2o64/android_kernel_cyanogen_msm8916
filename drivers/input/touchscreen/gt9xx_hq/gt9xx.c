@@ -1204,20 +1204,20 @@ static s8 gtp_enter_doze(struct goodix_ts_data *ts)
 
 static void report_gesture(struct goodix_ts_data *ts )
 {
-	u8 doze_buf[3] = {0x81, 0x4B};
-	if(!proximity_open_flag)
-	{
+//	u8 doze_buf[3] = {0x81, 0x4B};
+//	if(!proximity_open_flag)
+//	{
 		input_report_key(ts->input_dev, KEY_ENTER, 1);
 		input_sync(ts->input_dev);
 		input_report_key(ts->input_dev, KEY_ENTER, 0);
 		input_sync(ts->input_dev);
-	}
-	else
-	{
-		GTP_INFO("pocket mode, gesture event not sent!!");
-		doze_buf[2] = 0x00;
-		gtp_i2c_write(i2c_connect_client, doze_buf, 3);
-	}
+//	}
+//	else
+//	{
+//		GTP_INFO("pocket mode, gesture event not sent!!");
+//		doze_buf[2] = 0x00;
+//		gtp_i2c_write(i2c_connect_client, doze_buf, 3);
+//	}
 }
 #endif
 //added by chenchen for gesture 20140925 end
