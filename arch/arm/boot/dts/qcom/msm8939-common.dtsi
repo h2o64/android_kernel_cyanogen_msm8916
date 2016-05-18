@@ -221,11 +221,23 @@
                 rpm-channel-type = <15>; /* SMD_APPS_RPM */
         };
 
-	qcom,msm-thermal-simple {
-		compatible = "qcom,msm-thermal-simple";
-		qcom,thermal-vadc = <&pm8916_vadc>;
+    	qcom,mmx_thermal {
+        	compatible = "qcom,mmx_thermal";
+        	qcom,thermal-vadc = <&pm8916_vadc>;
 		qcom,adc-channel = <114>; // xo_therm | LR_MUX3_PU1_XO_THERM
-	};
+        	qcom,throttle_little_zones =
+			<800000 44 43>,
+			<499200 47 45>,
+			<249600 50 48>,
+			<200000 54 51>;
+        	qcom,throttle_big_zones =
+			<960000 58 55>,
+			<800000 61 59>,
+			<400000 67 65>,
+			<400000 67 65>;
+		qcom,critical_temp = <69>;
+		qcom,sampling_rate = <5000>;
+    	};
 
 	bam_dmux: qcom,bam_dmux@4044000 {
 		compatible = "qcom,bam_dmux";
