@@ -48,8 +48,6 @@
  * the exact same size as the copied struct
  * Additionnally, here are the features to implement :
  * - adding a battery sensor to adapt input voltage in FAN5105 port
- * - add a vote system when it comes to shutting down little core
- * because the sampling rate might be too quick
  */
 
 #define NR_THERMAL_ZONES 8
@@ -98,7 +96,7 @@ static void msm_thermal_main(struct work_struct *work)
 	struct thermal_zone *zone_little[nr_thermal_zones];
 	int32_t curr_zone, old_zone, i, ret;
 	int64_t temp;
-	int cpu;
+	int cpu, vote = 0;
 
 	/* Get the VADC channel hooked up */
 	ret = qpnp_vadc_read(t->conf.vadc_dev, t->conf.adc_chan, &result);
@@ -132,8 +130,17 @@ static void msm_thermal_main(struct work_struct *work)
 		 */
 		if (temp >= t->conf.max_temp) {
 			for_each_present_cpu(cpu) {
-				if ( cpu >= 4 && cpu_online(cpu)) {
+				/*
+				 * Only shutdown online little cores when the temperature is critical
+				 * since 4x(sampling_ms)
+				 */
+				if (cpu >= 4 && cpu_online(cpu) && vote == 4) {
+					pr_debug("%s: Critical temperature (%lld°c) reached, shutting down cpu%d.\n",
+									__func__, t->conf.max_temp, cpu);
 					cpu_down(cpu);
+					vote = 0; // Reset vote count
+				} else if (cpu >= 4 && cpu_online(cpu)) {
+					vote++;
 				} else {
 					pr_debug("%s: No little core to stop, just wait and see ..\n", __func__);
 				}
