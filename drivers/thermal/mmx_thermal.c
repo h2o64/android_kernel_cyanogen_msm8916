@@ -1,5 +1,5 @@
 /*
- * drivers/thermal/msm_thermal_simple.c
+ * drivers/thermal/mmx_thermal.c
  *
  * Copyright (C) 2014-2016, Sultanxda <sultanxda@gmail.com>
  * Copyright (C) 2016, Louis Popi <theh2o64@gmail.com>
@@ -50,7 +50,7 @@
  * - adding a battery sensor to adapt input voltage in FAN5105 port
  */
 
-#define NR_THERMAL_ZONES 8
+#define NR_THERMAL_ZONES 4
 static uint32_t nr_thermal_zones = NR_THERMAL_ZONES;
 
 struct throttle_policy {
