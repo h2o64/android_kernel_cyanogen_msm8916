@@ -50,10 +50,14 @@
  * - adding a battery sensor to adapt input voltage in FAN5105 port
  */
 
-#define NR_THERMAL_ZONES 4
-static uint32_t nr_thermal_zones = NR_THERMAL_ZONES;
+/* Numbers of zones of each type */
+#define NR_THERMAL_ZONES_MAX 8 // Set to 8 the max number of per cluster zone
+static uint32_t nr_thermal_zones = 0;
+static uint32_t nr_thermal_zones_big = 0;
+static uint32_t nr_thermal_zones_little = 0;
 
 struct throttle_policy {
+	char *arch;
 	int32_t curr_zone;
 	uint32_t freq;
 };
@@ -64,6 +68,7 @@ struct thermal_config {
 	uint8_t enabled;
 	uint32_t sampling_ms;
 	uint64_t max_temp;
+
 };
 
 struct thermal_zone {
@@ -78,9 +83,9 @@ struct thermal_policy {
 	struct delayed_work dwork;
 	struct thermal_config conf;
 	struct throttle_policy throttle;
-	struct thermal_zone zone[NR_THERMAL_ZONES];
-	struct thermal_zone zone_big[NR_THERMAL_ZONES];
-	struct thermal_zone zone_little[NR_THERMAL_ZONES];
+	struct thermal_zone zone[NR_THERMAL_ZONES_MAX*2];
+	struct thermal_zone zone_big[NR_THERMAL_ZONES_MAX];
+	struct thermal_zone zone_little[NR_THERMAL_ZONES_MAX];
 	struct workqueue_struct *wq;
 };
 
@@ -92,9 +97,6 @@ static void msm_thermal_main(struct work_struct *work)
 {
 	struct thermal_policy *t = container_of(work, typeof(*t), dwork.work);
 	struct qpnp_vadc_result result;
-	struct thermal_zone *zone[nr_thermal_zones];
-	struct thermal_zone *zone_big[nr_thermal_zones];
-	struct thermal_zone *zone_little[nr_thermal_zones];
 	int32_t curr_zone, old_zone, i, ret;
 	int64_t temp;
 	int cpu, vote = 0;
@@ -110,17 +112,6 @@ static void msm_thermal_main(struct work_struct *work)
 	old_zone = t->throttle.curr_zone;
 
 	spin_lock(&t->lock);
-
-	/*
-	 * The little cores will be throttled first and then the big ones.
-	 * Consequently, if the CPU Global temp is between the first temp zone
-	 * of little cores and first of big cores, then only throttle little cores
-	 */
-	if (temp >= t->zone_little[0].trip_degC && temp < t->zone_big[0].trip_degC) {
-		memcpy(zone, zone_little, sizeof (zone));
-	 } else {
-		memcpy(zone, zone_big, sizeof (zone));
-	}
 
 	for (i = 0; i < nr_thermal_zones; i++) {
 
@@ -207,6 +198,7 @@ static void msm_thermal_main(struct work_struct *work)
 	else
 		t->throttle.freq = t->zone[curr_zone].freq;
 
+	t->throttle.arch = t->zone[curr_zone].arch;
 	spin_unlock(&t->lock);
 
 	/* Only update CPU policy when the throttle zone changes */
@@ -294,6 +286,7 @@ static struct thermal_zone *msm_thermal_parse_zone_dt(struct device_node *np,
 			of_property_read_u32_index(np, prop, j + 3, &data);
 			tbl[i].reset_degC = data;
 		}
+		nr_thermal_zones = nr_thermal_zones + i;
 	}
 	return tbl;
 }
@@ -303,15 +296,40 @@ static int msm_thermal_parse_dt(struct platform_device *pdev,
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct thermal_zone *tmp_tbl;
-	int ret;
+	int ret, j, k;
+	uint32_t tmp = 0;
 
 	/* Big cluster */
+	tmp = nr_thermal_zones;
 	tmp_tbl = msm_thermal_parse_zone_dt(np, "big", "qcom,throttle_big_zones");
 	memcpy(t->zone_big, tmp_tbl, sizeof (t->zone_big));
+	nr_thermal_zones_big = tmp - nr_thermal_zones;
 
 	/* Little cluster */
+	tmp = nr_thermal_zones;
 	tmp_tbl = msm_thermal_parse_zone_dt(np, "little", "qcom,throttle_little_zones");
 	memcpy(t->zone_little, tmp_tbl, sizeof (t->zone_little));
+	nr_thermal_zones_little = tmp - nr_thermal_zones;
+
+	/*
+	 * Copy the big zone and little zone in right order into common zone
+	 * TODO: Don't copy little and then big but directly organize them according
+	 * to zone[i].trip_degC. For now, rely on user to set higher temps on big than little.
+	 */
+
+	/* First zones are the little one */
+	for (j = 0; j <= nr_thermal_zones_little; j++) {
+		t->zone[j] = t->zone_little[j];
+	}
+
+	/*
+	 * Then the big ones ..
+	 * "j" represents the currently written zone, so start at the zone right after last little one
+	 * "k" represents the big zones, so start with first one and copy them one by one
+	 */
+	for (j = (nr_thermal_zones_little + 1), k = 0; k <=nr_thermal_zones_big; j++, k++) {
+		t->zone[j] = t->zone_big[k];
+	}
 
 	/* Set VADC sensor chanel */
 	t->conf.vadc_dev = qpnp_get_vadc(&pdev->dev, "thermal");
