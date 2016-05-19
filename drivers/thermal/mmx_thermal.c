@@ -120,7 +120,7 @@ static void msm_thermal_main(struct work_struct *work)
 		 * just shutdown all the little CPU (4,5,6,7) until issue 
 		 * is fixed
 		 */
-		if (temp >= t->conf.max_temp) {
+		if (t->conf.max_temp && temp >= t->conf.max_temp) {
 			for_each_present_cpu(cpu) {
 				/*
 				 * Only shutdown online little cores when the temperature is critical
