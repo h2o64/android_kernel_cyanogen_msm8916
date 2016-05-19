@@ -221,6 +221,12 @@
                 rpm-channel-type = <15>; /* SMD_APPS_RPM */
         };
 
+	qcom,msm-thermal-simple {
+		compatible = "qcom,msm-thermal-simple";
+		qcom,thermal-vadc = <&pm8916_vadc>;
+		qcom,adc-channel = <114>; // xo_therm | LR_MUX3_PU1_XO_THERM
+	};
+
 	bam_dmux: qcom,bam_dmux@4044000 {
 		compatible = "qcom,bam_dmux";
 		reg = <0x4044000 0x19000>;
