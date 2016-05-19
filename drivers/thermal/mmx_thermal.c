@@ -67,6 +67,7 @@ struct thermal_config {
 };
 
 struct thermal_zone {
+	char *arch;
 	uint32_t freq;
 	int64_t trip_degC;
 	int64_t reset_degC;
@@ -258,68 +259,59 @@ static void update_online_cpu_policy(void)
 	put_online_cpus();
 }
 
-#define PROP_BIG "qcom,throttle_big_zones"
-#define PROP_LITTLE "qcom,throttle_little_zones"
 #define NUM_COLS 3
-static int msm_thermal_parse_dt(struct platform_device *pdev,
-			struct thermal_policy *t)
+static struct thermal_zone *msm_thermal_parse_zone_dt(struct device_node *np, 
+				char *arch, char *prop)
 {
-	struct device_node *np = pdev->dev.of_node;
-	struct thermal_zone *tbl;
-	const uint32_t *zones = NULL;
-	int ret, len, nf, i, j;
+	int len, nf, i, j;
 	u32 data;
+	const uint32_t *zone = NULL;
+	struct thermal_zone *tbl;
 
 	/* 
 	 * Zones gathering :
 	 * Syntax < freq | trip_degC | reset_degC >
 	 */
 
-	/* Big cluster */
-	zones = of_get_property(np, "qcom,throttle_big_zones", &len);
-	if (zones == NULL) {
-		pr_err("%s: No big zones defined\n", __func__);
+	zone = of_get_property(np, prop, &len);
+	if (zone == NULL) {
+		pr_err("%s: No %s zones defined\n", __func__, arch);
 	} else {
 		len /= sizeof(data);
 		nf = len / NUM_COLS;
 		tbl = kzalloc((nf + 1) * sizeof(*tbl), GFP_KERNEL);
 
 		for (i = 0, j = 0; i < nf; i++, j += 2) {
-			of_property_read_u32_index(np, PROP_BIG, j, &data);
+			/* Set the arch of each zone as a header */
+			tbl[i].arch = arch;
+
+			of_property_read_u32_index(np, prop, j + 1, &data);
 			tbl[i].freq = data;
 
-			of_property_read_u32_index(np, PROP_BIG, j + 1, &data);
+			of_property_read_u32_index(np, prop, j + 2, &data);
 			tbl[i].trip_degC = data;
 
-			of_property_read_u32_index(np, PROP_BIG, j + 2, &data);
+			of_property_read_u32_index(np, prop, j + 3, &data);
 			tbl[i].reset_degC = data;
 		}
-		/* NOTE: Here "i" is the amount of zones for big cluster */
-		memcpy(t->zone_big, tbl, sizeof (t->zone_big));
 	}
+	return tbl;
+}
+
+static int msm_thermal_parse_dt(struct platform_device *pdev,
+			struct thermal_policy *t)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct thermal_zone *tmp_tbl;
+	int ret;
+
+	/* Big cluster */
+	tmp_tbl = msm_thermal_parse_zone_dt(np, "big", "qcom,throttle_big_zones");
+	memcpy(t->zone_big, tmp_tbl, sizeof (t->zone_big));
 
 	/* Little cluster */
-	zones = of_get_property(np, "qcom,throttle_little_zones", &len);
-	if (zones == NULL) {
-		pr_err("%s: No little zones defined\n", __func__);
-	} else {
-		len /= sizeof(data);
-		nf = len / NUM_COLS;
-		tbl = kzalloc((nf + 1) * sizeof(*tbl), GFP_KERNEL);
-
-		for (i = 0, j = 0; i < nf; i++, j += 2) {
-			of_property_read_u32_index(np, PROP_LITTLE, j, &data);
-			tbl[i].freq = data;
-
-			of_property_read_u32_index(np, PROP_LITTLE, j + 1, &data);
-			tbl[i].trip_degC = data;
-
-			of_property_read_u32_index(np, PROP_LITTLE, j + 2, &data);
-			tbl[i].reset_degC = data;
-		}
-		/* NOTE: Here "i" is the amount of zones for little cluster */
-		memcpy(t->zone_little, tbl, sizeof (t->zone_little));
-	}
+	tmp_tbl = msm_thermal_parse_zone_dt(np, "little", "qcom,throttle_little_zones");
+	memcpy(t->zone_little, tmp_tbl, sizeof (t->zone_little));
 
 	/* Set VADC sensor chanel */
 	t->conf.vadc_dev = qpnp_get_vadc(&pdev->dev, "thermal");
