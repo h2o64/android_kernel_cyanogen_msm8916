@@ -1,0 +1,60 @@
+MicroMax Thermal Driver (MMX)
+
+This kernel driver has originally been developped by @sultanxda with his "simple
+thermal driver". This driver has then been modified (removing sysfs, bL optimizations,
+..) by h2o64. All the copyrights about sultanxda have been carefully conserved.
+
+MMX_THERMAL is a kernel platform driver which regulates thermal conditions
+on the device in the absence of an equivalent userspace daemon. The goal of
+MMX_THERMAL is to prevent the temperature of the system from exceeding
+a thermal limit at which it cannot operate. The MMX_THERMAL driver polls
+an appropriate ADC channel, and reduces the maximum CPU frequency allowed in steps,
+to limit power/thermal output when a threshold temperature is crossed. It restores
+the maximum CPU frequency allowed in the same stepwise fashion when the threshold
+temperature is cleared. The different thermal zones are pulled from device tree
+and are spreaded in both cluster of the big.LITTLE architecture. The little cores
+are the first to be throttled and then the big one to assure a very fluid feeling
+when throttling.
+
+The devicetree representation of the MMX_THERMAL block should be:
+
+Required properties
+
+- compatible: "qcom,mmx_thermal"
+- qcom,thermal-vadc: The phandle to the VADC device to use
+- qcom,adc-channel: The ADC channel to poll from on the VADC device; a full
+		list of valid channels is available in include/linux/qpnp/qpnp-adc.h,
+		inside the qpnp_vadc_channels enumeration.
+- qcom,throttle_big_zones: List of the different zones for the big cluster
+		following the syntax "target throttle freq | starting temperature (°c) | ending temperature (°c)"
+- qcom,throttle_little_zones: List of the different zones for the little cluster
+		following the same syntax as big ones
+- qcom,critical_temp: This is the temperature (°c) when the driver will shutdown the
+		littles cores one by one until the temperature issue gets fixed.
+- qcom,sampling_rate: Rate (ms) when the thermal datas gets updated default
+		one is 3000ms
+
+Example:
+	qcom,mmx_thermal {
+		compatible = "qcom,mmx_thermal";
+		qcom,thermal-vadc = <&pm8916_vadc>;
+		qcom,adc-channel = <178>;
+		qcom,throttle_big_zones =
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>;
+		qcom,throttle_little_zones =
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>,
+			<1728000 39 38>;
+		qcom,critical_temp = <70>;
+		qcom,sampling_rate = <2500>;
+	};
