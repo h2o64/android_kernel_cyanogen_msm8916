@@ -192,8 +192,12 @@ static void msm_thermal_main(struct work_struct *work)
 	/*
 	 * Update throttle freq. Setting throttle.freq to 0
 	 * tells the CPU notifier to unthrottle.
+	 * Setting throttle.freq to -1 tells the notfier to
+	 * shutdown one CPU of the cluster.
 	 */
-	if (curr_zone == UNTHROTTLE_ZONE)
+	if (t->throttle.freq == 0)
+		t->throttle.freq = -1;
+	else if (curr_zone == UNTHROTTLE_ZONE)
 		t->throttle.freq = 0;
 	else
 		t->throttle.freq = t->zone[curr_zone].freq;
@@ -216,6 +220,7 @@ static int do_cpu_throttle(struct notifier_block *nb,
 	struct cpufreq_policy *policy = data;
 	struct thermal_policy *t = t_policy_g;
 	uint32_t throttle_freq;
+	int cpu;
 
 	if (val != CPUFREQ_ADJUST)
 		return NOTIFY_OK;
@@ -224,10 +229,18 @@ static int do_cpu_throttle(struct notifier_block *nb,
 	throttle_freq = t->throttle.freq;
 	spin_unlock(&t->lock);
 
-	if (throttle_freq) {
-		policy->max = throttle_freq;
+	if (t->throttle.freq == -1) {
+		for_each_present_cpu(cpu) {
+				if (cpu >= 4 && cpu_online(cpu))
+					cpu_down(cpu);
+				else
+					pr_debug("%s: No little core to stop, just wait and see ..\n", __func__);
+			}
 	} else {
-		policy->max = policy->cpuinfo.max_freq;
+		if (throttle_freq)
+			policy->max = throttle_freq;
+		else
+			policy->max = policy->cpuinfo.max_freq;
 	}
 
 	if (policy->min > policy->max)
