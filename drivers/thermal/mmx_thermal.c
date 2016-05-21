@@ -37,7 +37,7 @@
 #define DEFAULT_SAMPLING_MS 3000
 #define UNTHROTTLE_ZONE (-1)
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* 
  * Initialize as 8 zones (big + little) I hope DT gathering will override it
@@ -55,8 +55,6 @@
 /* Numbers of zones of each type */
 #define NR_THERMAL_ZONES_MAX 8 // Set to 8 the max number of per cluster zone
 static uint32_t nr_thermal_zones = 0;
-static uint32_t nr_thermal_zones_big = 0;
-static uint32_t nr_thermal_zones_little = 0;
 
 struct throttle_policy {
 	char *arch;
@@ -69,7 +67,7 @@ struct thermal_config {
 	enum qpnp_vadc_channels adc_chan;
 	uint8_t enabled;
 	uint32_t sampling_ms;
-	uint64_t max_temp;
+	uint32_t max_temp;
 };
 
 struct thermal_zone {
@@ -128,7 +126,7 @@ static void msm_thermal_main(struct work_struct *work)
 				 * since 4x(sampling_ms)
 				 */
 				if (cpu >= 4 && vote == 4) {
-					pr_debug("%s: Critical temperature (%lld°c) reached, shutting down cpu%d.\n",
+					pr_info("%s: Critical temperature (%u°c) reached, shutting down cpu%d.\n",
 									__func__, t->conf.max_temp, cpu);
 					cpu_down(cpu);
 					cpu = cpu + 4; // Make sure it's doesn't shutdown "each" cpu
@@ -136,7 +134,7 @@ static void msm_thermal_main(struct work_struct *work)
 				} else if (cpu >= 4 && cpu_online(cpu)) {
 					vote++;
 				} else {
-					pr_debug("%s: No little core to stop, just wait and see ..\n", __func__);
+					pr_info("%s: No little core to stop, just wait and see ..\n", __func__);
 				}
 			}
 			break;
@@ -275,17 +273,17 @@ static struct thermal_zone *msm_thermal_parse_zone_dt(struct device_node *np,
 		nf = len / NUM_COLS;
 		tbl = kzalloc((nf + 1) * sizeof(*tbl), GFP_KERNEL);
 
-		for (i = 0, j = 0; i < nf; i++, j += 2) {
+		for (i = 0, j = 0; i < nf; i++, j += NUM_COLS) {
 			/* Set the arch of each zone as a header */
 			tbl[i].arch = arch;
 
-			of_property_read_u32_index(np, prop, j + 1, &data);
+			of_property_read_u32_index(np, prop, j, &data);
 			tbl[i].freq = data;
 
-			of_property_read_u32_index(np, prop, j + 2, &data);
+			of_property_read_u32_index(np, prop, j + 1, &data);
 			tbl[i].trip_degC = data;
 
-			of_property_read_u32_index(np, prop, j + 3, &data);
+			of_property_read_u32_index(np, prop, j + 2, &data);
 			tbl[i].reset_degC = data;
 		}
 		nr_thermal_zones = nr_thermal_zones + i;
@@ -298,42 +296,39 @@ static int msm_thermal_parse_dt(struct platform_device *pdev,
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct thermal_zone *tmp_tbl;
-	int ret, j, k, max;
+	int ret, i, j, k;
 	uint32_t tmp = 0;
 
 	/* Big cluster */
 	tmp = nr_thermal_zones;
 	tmp_tbl = msm_thermal_parse_zone_dt(np, "big", "qcom,throttle_big_zones");
 	memcpy(t->zone_big, tmp_tbl, sizeof (t->zone_big));
-	nr_thermal_zones_big = tmp - nr_thermal_zones;
 
 	/* Little cluster */
 	tmp = nr_thermal_zones;
 	tmp_tbl = msm_thermal_parse_zone_dt(np, "little", "qcom,throttle_little_zones");
 	memcpy(t->zone_little, tmp_tbl, sizeof (t->zone_little));
-	nr_thermal_zones_little = tmp - nr_thermal_zones;
 
-	/* Copy the big zone and little zone in right order into common zone */
-	if (nr_thermal_zones_big > nr_thermal_zones_little || nr_thermal_zones_big == nr_thermal_zones_little)
-		max = nr_thermal_zones_big;
-	else
-		max = nr_thermal_zones_little;
-
-	for (j = 0, k = 0; k <= nr_thermal_zones; k++) {
+	for (i = 0, j = 0, k = 0; k <= nr_thermal_zones - 1; k++) {
 		/* If the start throttling temp of big is colder than little's one, put it before */
-		if (t->zone_big[j].trip_degC < t->zone_little[j].trip_degC)
-			t->zone[k] = t->zone_big[j];
-		else
-			t->zone[k] = t->zone_little[j];
-
-		if (j == max)
-			j = 0;
-		j++; /* Next zone */
+		if (t->zone_big[j].trip_degC < t->zone_little[i].trip_degC) {
+			t->zone[k].arch = t->zone_big[i].arch;
+			t->zone[k].freq = t->zone_big[i].freq;
+			t->zone[k].trip_degC = t->zone_big[i].trip_degC;
+			t->zone[k].reset_degC = t->zone_big[i].reset_degC;
+			i++;
+		} else {
+			t->zone[k].arch = t->zone_little[j].arch;
+			t->zone[k].freq = t->zone_little[j].freq;
+			t->zone[k].trip_degC = t->zone_little[j].trip_degC;
+			t->zone[k].reset_degC = t->zone_little[j].reset_degC;
+			j++;
+		}
 	}
 
 #ifdef DEBUG
-	for (j = 0; j <= nr_thermal_zones; j++) {
-		pr_debug("%s: Zone %d : %s | %u | %lld | %lld \n", __func__,
+	for (j = 0; j <= nr_thermal_zones - 1; j++) {
+		pr_info("%s: Zone %d : %s | %u | %lld | %lld \n", __func__,
 				j, t->zone[j].arch, t->zone[j].freq, t->zone[j].trip_degC, t->zone[j].reset_degC);
 	}
 #endif
@@ -352,18 +347,18 @@ static int msm_thermal_parse_dt(struct platform_device *pdev,
 		pr_err("%s: ADC-channel property missing\n", __func__);
 
 	/* Set max_temp value */
-	ret = of_property_read_u64(np, "qcom,critical_temp", &t->conf.max_temp);
+	ret = of_property_read_u32(np, "qcom,critical_temp", &t->conf.max_temp);
 	if (ret)
 		pr_err("%s: Critical temp property missing\n", __func__);
 #ifdef DEBUG
-	pr_debug("%s: Critical temp is %lld \n", __func__, t->conf.max_temp);
+	pr_info("%s: Critical temp is %u \n", __func__, t->conf.max_temp);
 #endif
 	/* Set sampling rate */
 	ret = of_property_read_u32(np, "qcom,sampling_rate", &t->conf.sampling_ms);
 	if (ret)
 		pr_err("%s: Sampling rate property missing\n", __func__);
 #ifdef DEBUG
-	pr_debug("%s: Sampling rate is %u \n", __func__, t->conf.sampling_ms);
+	pr_info("%s: Sampling rate is %u \n", __func__, t->conf.sampling_ms);
 #endif
 	return ret;
 }
