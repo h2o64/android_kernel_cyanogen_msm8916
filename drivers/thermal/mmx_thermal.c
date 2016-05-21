@@ -121,15 +121,16 @@ static void msm_thermal_main(struct work_struct *work)
 		 * is fixed
 		 */
 		if (t->conf.max_temp && temp >= t->conf.max_temp) {
-			for_each_present_cpu(cpu) {
+			for_each_online_cpu(cpu) {
 				/*
 				 * Only shutdown online little cores when the temperature is critical
 				 * since 4x(sampling_ms)
 				 */
-				if (cpu >= 4 && cpu_online(cpu) && vote == 4) {
+				if (cpu >= 4 && vote == 4) {
 					pr_debug("%s: Critical temperature (%lld°c) reached, shutting down cpu%d.\n",
 									__func__, t->conf.max_temp, cpu);
 					cpu_down(cpu);
+					cpu = cpu + 4; // Make sure it's doesn't shutdown "each" cpu
 					vote = 0; // Reset vote count
 				} else if (cpu >= 4 && cpu_online(cpu)) {
 					vote++;
