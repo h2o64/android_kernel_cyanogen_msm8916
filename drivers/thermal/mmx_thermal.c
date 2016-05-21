@@ -296,7 +296,7 @@ static int msm_thermal_parse_dt(struct platform_device *pdev,
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct thermal_zone *tmp_tbl;
-	int ret, j, k;
+	int ret, j, k, max;
 	uint32_t tmp = 0;
 
 	/* Big cluster */
@@ -311,24 +311,22 @@ static int msm_thermal_parse_dt(struct platform_device *pdev,
 	memcpy(t->zone_little, tmp_tbl, sizeof (t->zone_little));
 	nr_thermal_zones_little = tmp - nr_thermal_zones;
 
-	/*
-	 * Copy the big zone and little zone in right order into common zone
-	 * TODO: Don't copy little and then big but directly organize them according
-	 * to zone[i].trip_degC. For now, rely on user to set higher temps on big than little.
-	 */
+	/* Copy the big zone and little zone in right order into common zone */
+	if (nr_thermal_zones_big > nr_thermal_zones_little || nr_thermal_zones_big == nr_thermal_zones_little)
+		max = nr_thermal_zones_big;
+	else
+		max = nr_thermal_zones_little;
 
-	/* First zones are the little one */
-	for (j = 0; j <= nr_thermal_zones_little; j++) {
-		t->zone[j] = t->zone_little[j];
-	}
+	for (j = 0, k = 0; k <= nr_thermal_zones; k++) {
+		/* If the start throttling temp of big is colder than little's one, put it before */
+		if (t->zone_big[j].trip_degC < t->zone_little[j].trip_degC)
+			t->zone[k] = t->zone_big[j];
+		else
+			t->zone[k] = t->zone_little[j];
 
-	/*
-	 * Then the big ones ..
-	 * "j" represents the currently written zone, so start at the zone right after last little one
-	 * "k" represents the big zones, so start with first one and copy them one by one
-	 */
-	for (j = (nr_thermal_zones_little + 1), k = 0; k <=nr_thermal_zones_big; j++, k++) {
-		t->zone[j] = t->zone_big[k];
+		if (j == max)
+			j = 0;
+		j++; /* Next zone */
 	}
 
 	/* Set VADC sensor chanel */
