@@ -37,6 +37,8 @@
 #define DEFAULT_SAMPLING_MS 3000
 #define UNTHROTTLE_ZONE (-1)
 
+#define DEBUG 0
+
 /* 
  * Initialize as 8 zones (big + little) I hope DT gathering will override it
  * Morever, the user must use the same amount of big and little zones
@@ -68,7 +70,6 @@ struct thermal_config {
 	uint8_t enabled;
 	uint32_t sampling_ms;
 	uint64_t max_temp;
-
 };
 
 struct thermal_zone {
@@ -330,6 +331,13 @@ static int msm_thermal_parse_dt(struct platform_device *pdev,
 		j++; /* Next zone */
 	}
 
+#ifdef DEBUG
+	for (j = 0; j <= nr_thermal_zones; j++) {
+		pr_debug("%s: Zone %d : %s | %u | %lld | %lld \n", __func__,
+				j, t->zone[j].arch, t->zone[j].freq, t->zone[j].trip_degC, t->zone[j].reset_degC);
+	}
+#endif
+
 	/* Set VADC sensor chanel */
 	t->conf.vadc_dev = qpnp_get_vadc(&pdev->dev, "thermal");
 	if (IS_ERR(t->conf.vadc_dev)) {
@@ -347,12 +355,16 @@ static int msm_thermal_parse_dt(struct platform_device *pdev,
 	ret = of_property_read_u64(np, "qcom,critical_temp", &t->conf.max_temp);
 	if (ret)
 		pr_err("%s: Critical temp property missing\n", __func__);
-
+#ifdef DEBUG
+	pr_debug("%s: Critical temp is %lld \n", __func__, t->conf.max_temp);
+#endif
 	/* Set sampling rate */
 	ret = of_property_read_u32(np, "qcom,sampling_rate", &t->conf.sampling_ms);
 	if (ret)
 		pr_err("%s: Sampling rate property missing\n", __func__);
-
+#ifdef DEBUG
+	pr_debug("%s: Sampling rate is %u \n", __func__, t->conf.sampling_ms);
+#endif
 	return ret;
 }
 
@@ -435,4 +447,3 @@ static int __init msm_thermal_init(void)
 	return platform_driver_register(&msm_thermal_device);
 }
 device_initcall(msm_thermal_init);
-
