@@ -112,14 +112,14 @@ static void msm_thermal_main(struct work_struct *work)
 
 	spin_lock(&t->lock);
 
-	for (i = 0; i < nr_thermal_zones; i++) {
+	for (i = 0; i < 8; i++) {
 
 		/*
 		 * If we reach a very high temperature (specified by the DT)
 		 * just shutdown all the little CPU (4,5,6,7) until issue 
 		 * is fixed
 		 */
-		if (t->conf.max_temp && temp >= t->conf.max_temp) {
+		if (temp >= t->conf.max_temp) {
 			for_each_online_cpu(cpu) {
 				/*
 				 * Only shutdown online little cores when the temperature is critical
@@ -226,6 +226,9 @@ static int do_cpu_throttle(struct notifier_block *nb,
 
 	if (throttle_freq) {
 		policy->max = throttle_freq;
+#ifdef DEBUG
+		pr_info("%s: Throttle to %u \n", __func__, throttle_freq);
+#endif
 	} else {
 		policy->max = policy->cpuinfo.max_freq;
 	}
