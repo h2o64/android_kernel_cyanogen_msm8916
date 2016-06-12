@@ -19,6 +19,9 @@
 #define TOMBAK_MBHC_NO	1
 #define WCD_MBHC_DEF_BUTTONS 5
 
+// Enable ASUS UART Debug
+#define ASUS_FACTORY_BUILD 1
+
 enum wcd_mbhc_plug_type {
 	MBHC_PLUG_TYPE_INVALID = -1,
 	MBHC_PLUG_TYPE_NONE,
@@ -251,6 +254,10 @@ struct wcd_mbhc {
 	(cfg_ptr->_n_rload * \
 	(sizeof(cfg_ptr->_rload[0]) + sizeof(cfg_ptr->_alpha[0]))))
 
+void wcd_plug_detection_for_audio_debug(struct wcd_mbhc *mbhc,int debug_mode);
+#ifdef ASUS_FACTORY_DEBUG
+void wcd_disable_button_event_for_factory(struct wcd_mbhc *mbhc,int button_mode);
+#endif
 int wcd_mbhc_start(struct wcd_mbhc *mbhc,
 		       struct wcd_mbhc_config *mbhc_cfg);
 void wcd_mbhc_stop(struct wcd_mbhc *mbhc);

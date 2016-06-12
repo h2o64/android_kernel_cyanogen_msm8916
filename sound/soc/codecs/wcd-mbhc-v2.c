@@ -54,6 +54,11 @@
 #define FW_READ_ATTEMPTS 15
 #define FW_READ_TIMEOUT 4000000
 
+// Enable ASUS UART Debug
+#define ASUS_FACTORY_BUILD 1
+
+int plug_count = 0;
+extern int g_DebugMode;
 static int det_extn_cable_en;
 module_param(det_extn_cable_en, int,
 		S_IRUGO | S_IWUSR | S_IWGRP);
@@ -1225,6 +1230,12 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 	struct snd_soc_codec *codec = mbhc->codec;
 	pr_debug("%s: enter\n", __func__);
 
+	plug_count += 1;
+
+	if(g_DebugMode){
+		goto exit;
+	}
+
 	WCD_MBHC_RSC_LOCK(mbhc);
 
 	mbhc->in_swch_irq_handler = true;
@@ -1348,6 +1359,8 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 	mbhc->in_swch_irq_handler = false;
 	WCD_MBHC_RSC_UNLOCK(mbhc);
 	pr_debug("%s: leave\n", __func__);
+exit:
+	pr_debug("%s: Debug mode,leave\n",__func__);
 }
 
 static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
@@ -1367,6 +1380,59 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 	pr_debug("%s: leave %d\n", __func__, r);
 	return r;
 }
+
+/*steve_chen ++*/
+void wcd_plug_detection_for_audio_debug(struct wcd_mbhc * mbhc,int debug_mode)
+{
+	struct snd_soc_codec *codec = mbhc->codec;
+	bool detection_type = (snd_soc_read(codec,
+				MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_1)) & 0x20;
+	if (debug_mode) {
+		if (mbhc->current_plug != MBHC_PLUG_TYPE_NONE) {
+			printk("%s: HS is pluged in,then audio -> debug model\n",__func__);
+			plug_count = 0;
+			wcd9xxx_spmi_unlock_sleep();
+			wcd_mbhc_swch_irq_handler(mbhc);
+			wcd9xxx_spmi_unlock_sleep();
+		}
+		wcd9xxx_spmi_enable_irq(mbhc->intr_ids->mbhc_btn_press_intr);
+		wcd9xxx_spmi_enable_irq(mbhc->intr_ids->mbhc_btn_release_intr);
+		wcd9xxx_spmi_enable_irq(mbhc->intr_ids->hph_left_ocp);
+		wcd9xxx_spmi_enable_irq(mbhc->intr_ids->hph_right_ocp);
+	} else {
+		wcd9xxx_spmi_enable_irq(mbhc->intr_ids->mbhc_btn_press_intr);
+		wcd9xxx_spmi_enable_irq(mbhc->intr_ids->mbhc_btn_release_intr);
+		wcd9xxx_spmi_enable_irq(mbhc->intr_ids->hph_left_ocp);
+		wcd9xxx_spmi_enable_irq(mbhc->intr_ids->hph_right_ocp);
+		if(plug_count%2){
+			plug_count = 0;
+			mbhc->current_plug = MBHC_PLUG_TYPE_NONE;
+			snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_1,
+							0x20, (!detection_type << 5));
+			wcd9xxx_spmi_unlock_sleep();
+			wcd_mbhc_swch_irq_handler(mbhc);
+			wcd9xxx_spmi_unlock_sleep();
+		}
+	}
+}
+EXPORT_SYMBOL(wcd_plug_detection_for_audio_debug);
+
+#ifdef ASUS_FACTORY_DEBUG
+void wcd_disable_button_event_for_factory(struct wcd_mbhc * mbhc,int button_mode)
+{
+    if(mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET){
+        if(1 == button_mode){
+            wcd9xxx_spmi_enable_irq( mbhc->intr_ids->mbhc_btn_press_intr, false);
+            wcd9xxx_spmi_enable_irq( mbhc->intr_ids->mbhc_btn_release_intr, false);
+        }else if(0 == button_mode){
+            wcd9xxx_spmi_enable_irq( mbhc->intr_ids->mbhc_btn_press_intr,true);
+            wcd9xxx_spmi_enable_irq( mbhc->intr_ids->mbhc_btn_release_intr,true);
+        }
+    }
+}
+EXPORT_SYMBOL(wcd_disable_button_event_for_factory);
+#endif
+/*steve_chen --*/
 
 static int wcd_mbhc_get_button_mask(u16 btn)
 {
