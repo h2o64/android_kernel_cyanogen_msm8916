@@ -54,9 +54,6 @@
 #define FW_READ_ATTEMPTS 15
 #define FW_READ_TIMEOUT 4000000
 
-// Enable ASUS UART Debug
-#define ASUS_FACTORY_BUILD 1
-
 int plug_count = 0;
 extern int g_DebugMode;
 static int det_extn_cable_en;
@@ -1416,22 +1413,6 @@ void wcd_plug_detection_for_audio_debug(struct wcd_mbhc * mbhc,int debug_mode)
 	}
 }
 EXPORT_SYMBOL(wcd_plug_detection_for_audio_debug);
-
-#ifdef ASUS_FACTORY_DEBUG
-void wcd_disable_button_event_for_factory(struct wcd_mbhc * mbhc,int button_mode)
-{
-    if(mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET){
-        if(1 == button_mode){
-            wcd9xxx_spmi_enable_irq( mbhc->intr_ids->mbhc_btn_press_intr, false);
-            wcd9xxx_spmi_enable_irq( mbhc->intr_ids->mbhc_btn_release_intr, false);
-        }else if(0 == button_mode){
-            wcd9xxx_spmi_enable_irq( mbhc->intr_ids->mbhc_btn_press_intr,true);
-            wcd9xxx_spmi_enable_irq( mbhc->intr_ids->mbhc_btn_release_intr,true);
-        }
-    }
-}
-EXPORT_SYMBOL(wcd_disable_button_event_for_factory);
-#endif
 /*steve_chen --*/
 
 static int wcd_mbhc_get_button_mask(u16 btn)

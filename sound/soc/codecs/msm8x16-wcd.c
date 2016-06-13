@@ -116,9 +116,6 @@ enum {
 #define VOLTAGE_CONVERTER(value, min_value, step_size)\
 	((value - min_value)/step_size);
 
-// Enable ASUS UART Debug
-#define ASUS_FACTORY_BUILD 1
-
 enum {
 	AIF1_PB = 0,
 	AIF1_CAP,
@@ -4257,18 +4254,6 @@ static ssize_t audio_debug_proc_write(struct file *filp, const char __user *buff
         snd_soc_write(registered_codec, reg, value);
         value = snd_soc_read(registered_codec, reg);
         printk("[Audio][codec] write register reg[0x%x]=[0x%x]\n", reg, value);
-#ifdef ASUS_FACTORY_DEBUG
-    }else if(strncmp(messages, "2", 1) == 0){
-        if(!g_DebugMode){
-            wcd_disable_button_event_for_factory(&g_msm8x16_wcd_priv->mbhc,1);
-        }
-        printk("[Audio][Button]Disable Button press for test!\n");
-    }else if(strncmp(messages, "3", 1) == 0){
-        if(!g_DebugMode){
-            wcd_disable_button_event_for_factory(&g_msm8x16_wcd_priv->mbhc,0);
-        }
-        printk("[Audio][Button]Enable Button press for test!\n");
-#endif
     }
 
     deinitKernelEnv();
